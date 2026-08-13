@@ -16,9 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -38,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -139,19 +138,19 @@ fun SettingsScreen(
             if (notificationAllowed) openNotificationSettings()
             else notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
-        Column(
-            Modifier.fillMaxWidth().border(1.dp, Line, RoundedCornerShape(12.dp)).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("冲洗提醒", fontWeight = FontWeight.Medium)
-                    Text("胶卷标记完成后，在指定天数后提醒冲洗。", color = Sub, style = MaterialTheme.typography.labelMedium)
-                }
+        val reminderShape = RoundedCornerShape(12.dp)
+        ListItem(
+            modifier = Modifier.fillMaxWidth().clip(reminderShape).border(1.dp, Line, reminderShape),
+            colors = ListItemDefaults.colors(containerColor = Surface),
+            headlineContent = { Text("冲洗提醒", fontWeight = FontWeight.Medium) },
+            supportingContent = {
+                Text(
+                    "胶卷标记完成后，在指定天数后提醒冲洗。",
+                    color = Sub,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            },
+            trailingContent = {
                 Switch(
                     checked = remindersEnabled,
                     onCheckedChange = { enabled ->
@@ -164,22 +163,30 @@ fun SettingsScreen(
                         }
                     },
                 )
-            }
-            Text("提醒时间", color = Sub, style = MaterialTheme.typography.labelMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(1, 3, 7).forEach { days ->
-                    TagChip("${days}天后", reminderDays == days) {
-                        reminderDays = days
-                        ReminderPreferences.setDelayDays(context, days)
+            },
+        )
+        ListItem(
+            modifier = Modifier.fillMaxWidth().clip(reminderShape).border(1.dp, Line, reminderShape),
+            colors = ListItemDefaults.colors(containerColor = Surface),
+            headlineContent = { Text("提醒时间", fontWeight = FontWeight.Medium) },
+            supportingContent = {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(1, 3, 7).forEach { days ->
+                        TagChip("${days}天后", reminderDays == days) {
+                            reminderDays = days
+                            ReminderPreferences.setDelayDays(context, days)
+                        }
                     }
                 }
-            }
-            if (notificationAllowed) {
-                TextButton(onClick = { FilmReminder.sendTest(context) }) {
-                    Text("发送测试提醒", color = Ink)
+            },
+            trailingContent = if (notificationAllowed) {
+                {
+                    TextButton(onClick = { FilmReminder.sendTest(context) }) {
+                        Text("测试", color = Ink)
+                    }
                 }
-            }
-        }
+            } else null,
+        )
 
         Text("隐私与系统访问", color = Sub, fontWeight = FontWeight.SemiBold)
         PrivacyAccessRow("照片", "系统照片选择器", "只读取你明确选择的图片，无需相册权限")
@@ -238,8 +245,9 @@ private fun PermissionCard(
     action: String,
     onClick: () -> Unit,
 ) {
+    val shape = RoundedCornerShape(12.dp)
     ListItem(
-        modifier = Modifier.fillMaxWidth().border(1.dp, Line, RoundedCornerShape(12.dp)),
+        modifier = Modifier.fillMaxWidth().clip(shape).border(1.dp, Line, shape),
         colors = ListItemDefaults.colors(containerColor = Surface),
         headlineContent = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -254,8 +262,9 @@ private fun PermissionCard(
 
 @Composable
 private fun PrivacyAccessRow(title: String, access: String, description: String) {
+    val shape = RoundedCornerShape(12.dp)
     ListItem(
-        modifier = Modifier.fillMaxWidth().border(1.dp, Line, RoundedCornerShape(12.dp)),
+        modifier = Modifier.fillMaxWidth().clip(shape).border(1.dp, Line, shape),
         colors = ListItemDefaults.colors(containerColor = Surface),
         headlineContent = { Text(title, fontWeight = FontWeight.Medium) },
         supportingContent = { Text(description, color = Sub, style = MaterialTheme.typography.labelMedium) },
@@ -271,8 +280,9 @@ private fun SettingsCard(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    val shape = RoundedCornerShape(12.dp)
     ListItem(
-        modifier = Modifier.fillMaxWidth().border(1.dp, Line, RoundedCornerShape(12.dp)),
+        modifier = Modifier.fillMaxWidth().clip(shape).border(1.dp, Line, shape),
         colors = ListItemDefaults.colors(containerColor = Surface),
         headlineContent = { Text(title, fontWeight = FontWeight.Medium) },
         supportingContent = { Text(description, color = Sub, style = MaterialTheme.typography.labelMedium) },

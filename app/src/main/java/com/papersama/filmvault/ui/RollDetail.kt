@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,14 +22,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -59,7 +62,7 @@ import com.papersama.filmvault.data.TagCategory
 import com.papersama.filmvault.data.splitTags
 import com.papersama.filmvault.data.today
 
-private enum class DetailSheet { ACTIONS, LAB, TAGS }
+private enum class DetailSheet { LAB, TAGS }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -80,12 +83,13 @@ fun RollDetailScreen(
     }
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
+        var actionMenuExpanded by remember { mutableStateOf(false) }
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = back, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Outlined.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
             }
             Text(
                 roll.name,
@@ -95,8 +99,40 @@ fun RollDetailScreen(
                 textAlign = TextAlign.Center,
                 overflow = TextOverflow.Ellipsis,
             )
-            IconButton(onClick = { sheet = DetailSheet.ACTIONS }, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Outlined.MoreHoriz, contentDescription = "更多操作")
+            Box {
+                IconButton(onClick = { actionMenuExpanded = true }, modifier = Modifier.size(40.dp)) {
+                    Icon(Icons.Outlined.MoreVert, contentDescription = "更多操作")
+                }
+                DropdownMenu(
+                    expanded = actionMenuExpanded,
+                    onDismissRequest = { actionMenuExpanded = false },
+                    containerColor = Surface,
+                ) {
+                    if (roll.archived) {
+                        DropdownMenuItem(
+                            text = { Text("移出收纳") },
+                            onClick = {
+                                actionMenuExpanded = false
+                                viewModel.unarchive(roll.id)
+                            },
+                        )
+                    } else {
+                        DropdownMenuItem(
+                            text = { Text("标记为完成") },
+                            onClick = {
+                                actionMenuExpanded = false
+                                viewModel.markDone(roll.id, today())
+                            },
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text("删除胶卷", color = Danger) },
+                        onClick = {
+                            actionMenuExpanded = false
+                            viewModel.deleteRoll(roll.id, back)
+                        },
+                    )
+                }
             }
         }
         LazyColumn(
@@ -130,66 +166,76 @@ fun RollDetailScreen(
                 }
             } else {
                 items(roll.shots.sortedBy { it.date }, key = { it.id }) { shot ->
-                    Column(
-                        Modifier.fillMaxWidth().border(1.dp, Line, RoundedCornerShape(12.dp))
-                            .clickable { open(Route.AddShot(roll.id, shot.id)) }.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    val shotShape = RoundedCornerShape(12.dp)
+                    ListItem(
+                        modifier = Modifier.fillMaxWidth().clip(shotShape)
+                            .border(1.dp, Line, shotShape)
+                            .clickable { open(Route.AddShot(roll.id, shot.id)) },
+                        colors = ListItemDefaults.colors(containerColor = Surface),
+                        headlineContent = {
                             Text(shot.date, fontWeight = FontWeight.SemiBold)
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        },
+                        supportingContent = {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                if (shot.note.isNotBlank()) {
+                                    Text(shot.note, color = TagInk, lineHeight = 20.sp)
+                                }
+                                if (shot.samples.isEmpty()) {
+                                    Box(
+                                        Modifier.fillMaxWidth().height(40.dp)
+                                            .background(Gray, RoundedCornerShape(8.dp)),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            "暂无样张",
+                                            color = Weak,
+                                            style = MaterialTheme.typography.labelMedium,
+                                        )
+                                    }
+                                } else {
+                                    Row(
+                                        Modifier.horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        shot.samples.forEach {
+                                            LocalFileImage(
+                                                it,
+                                                Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        trailingContent = {
+                            Column(horizontalAlignment = Alignment.End) {
                                 Text("${shot.count}张", color = Sub)
-                                Text(
-                                    "删除",
-                                    color = Danger,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    modifier = Modifier.clickable { viewModel.deleteShot(roll.id, shot.id) },
-                                )
+                                TextButton(onClick = { viewModel.deleteShot(roll.id, shot.id) }) {
+                                    Text("删除", color = Danger)
+                                }
                             }
-                        }
-                        if (shot.note.isNotBlank()) Text(shot.note, color = TagInk, lineHeight = 20.sp)
-                        if (shot.samples.isEmpty()) {
-                            Box(
-                                Modifier.fillMaxWidth().height(40.dp).background(Gray, RoundedCornerShape(8.dp)),
-                                contentAlignment = Alignment.Center,
-                            ) { Text("暂无样张", color = Weak, style = MaterialTheme.typography.labelMedium) }
-                        } else {
-                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                shot.samples.forEach { LocalFileImage(it, Modifier.size(64.dp).clip(RoundedCornerShape(8.dp))) }
-                            }
-                        }
-                    }
+                        },
+                    )
                 }
             }
             item {
-                Column(
-                    Modifier.fillMaxWidth().border(1.dp, Line, RoundedCornerShape(12.dp)).padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("冲洗 / 扫描", style = MaterialTheme.typography.headlineSmall)
-                        TextButton(onClick = { sheet = DetailSheet.LAB }) { Text("编辑", color = KodakYellow) }
-                    }
-                    Text(labSummary(roll.lab), color = TagInk)
-                }
+                val labShape = RoundedCornerShape(12.dp)
+                ListItem(
+                    modifier = Modifier.fillMaxWidth().clip(labShape).border(1.dp, Line, labShape),
+                    colors = ListItemDefaults.colors(containerColor = Surface),
+                    headlineContent = { Text("冲洗 / 扫描", style = MaterialTheme.typography.headlineSmall) },
+                    supportingContent = { Text(labSummary(roll.lab), color = TagInk) },
+                    trailingContent = {
+                        TextButton(onClick = { sheet = DetailSheet.LAB }) {
+                            Text("编辑", color = KodakYellow)
+                        }
+                    },
+                )
             }
         }
     }
 
     when (sheet) {
-        DetailSheet.ACTIONS -> ModalBottomSheet(onDismissRequest = { sheet = null }, containerColor = Surface) {
-            Text(roll.name, color = Sub, modifier = Modifier.fillMaxWidth().padding(12.dp), textAlign = TextAlign.Center)
-            if (roll.archived) {
-                SheetAction("移出收纳") { viewModel.unarchive(roll.id); sheet = null }
-            } else {
-                SheetAction("标记为完成") { viewModel.markDone(roll.id, today()); sheet = null }
-            }
-            SheetAction("删除胶卷", Danger) {
-                sheet = null
-                viewModel.deleteRoll(roll.id, back)
-            }
-            Spacer(Modifier.height(24.dp))
-        }
         DetailSheet.LAB -> LabSheet(roll.lab, dismiss = { sheet = null }) {
             viewModel.updateLab(roll.id, it)
             sheet = null
@@ -232,13 +278,6 @@ private fun RollSummary(roll: Roll, onTags: () -> Unit) {
             if (roll.tags.isEmpty()) Text("+ 添加标签", color = KodakYellow)
             else roll.tags.forEach { TagChip(it) }
         }
-    }
-}
-
-@Composable
-private fun SheetAction(label: String, color: androidx.compose.ui.graphics.Color = Ink, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-        Text(label, color = color)
     }
 }
 

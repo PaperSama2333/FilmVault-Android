@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Label
@@ -39,6 +40,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
@@ -253,17 +256,16 @@ private fun StatsTab(state: AppUiState) {
         }
         Panel(title = "品牌分布") {
             brands.forEach { (brand, count) ->
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ListItem(
+                    colors = ListItemDefaults.colors(containerColor = Surface),
+                    headlineContent = { Text(brand) },
+                    leadingContent = {
                         Box(Modifier.size(10.dp).background(brandColor(brand), CircleShape))
-                        Text(brand)
-                    }
-                    Text("${count}卷", color = Sub, fontWeight = FontWeight.Medium)
-                }
+                    },
+                    trailingContent = {
+                        Text("${count}卷", color = Sub, fontWeight = FontWeight.Medium)
+                    },
+                )
             }
         }
     }
@@ -308,56 +310,74 @@ private fun MineTab(
         uri?.let(viewModel::updateAvatar)
     }
     val shotCount = state.rolls.sumOf(Roll::shot)
+    val mineItems = listOf<Pair<String, () -> Unit>>(
+        "我的胶卷" to { selectTab(0) },
+        "冲洗记录" to { selectTab(1) },
+        "标签管理" to { selectTab(2) },
+        "设置" to { open(Route.Settings) },
+    )
 
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        Text("我的", style = MaterialTheme.typography.displaySmall)
-        Row(
-            Modifier.fillMaxWidth().height(96.dp).border(1.dp, Line, RoundedCornerShape(12.dp)).padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Box(
-                Modifier.size(64.dp).clip(CircleShape).clickable { avatarMenu = true },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (state.profile.avatar.isBlank()) {
-                    Box(Modifier.fillMaxSize().background(KodakYellow), contentAlignment = Alignment.Center) {
-                        Text("头像", style = MaterialTheme.typography.labelMedium)
-                    }
-                } else {
-                    LocalFileImage(state.profile.avatar, Modifier.fillMaxSize())
-                }
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(
-                    Modifier.clickable { nameEditor = true },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(state.profile.name, style = MaterialTheme.typography.titleLarge)
-                    Icon(Icons.Outlined.Edit, contentDescription = "修改昵称", tint = Sub, modifier = Modifier.size(16.dp))
-                }
-                Text("已记录 ${state.rolls.size} 卷 · $shotCount 张", color = Sub)
-            }
+        item {
+            Text("我的", style = MaterialTheme.typography.displaySmall)
         }
-        listOf(
-            Triple("我的胶卷", { selectTab(0) }, 0),
-            Triple("冲洗记录", { selectTab(1) }, 0),
-            Triple("标签管理", { selectTab(2) }, 0),
-            Triple("设置", { open(Route.Settings) }, 0),
-        ).forEach { item ->
-            Row(
-                Modifier.fillMaxWidth().height(52.dp).border(1.dp, Line, RoundedCornerShape(12.dp))
-                    .clickable(onClick = item.second).padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(item.first)
-                Text("›", fontSize = 20.sp, color = Weak)
-            }
+        item {
+            val profileShape = RoundedCornerShape(12.dp)
+            ListItem(
+                modifier = Modifier.fillMaxWidth().height(96.dp).clip(profileShape)
+                    .border(1.dp, Line, profileShape),
+                colors = ListItemDefaults.colors(containerColor = Surface),
+                leadingContent = {
+                    Box(
+                        Modifier.size(64.dp).clip(CircleShape).clickable { avatarMenu = true },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (state.profile.avatar.isBlank()) {
+                            Box(Modifier.fillMaxSize().background(KodakYellow), contentAlignment = Alignment.Center) {
+                                Text("头像", style = MaterialTheme.typography.labelMedium)
+                            }
+                        } else {
+                            LocalFileImage(state.profile.avatar, Modifier.fillMaxSize())
+                        }
+                    }
+                },
+                headlineContent = {
+                    Row(
+                        Modifier.clickable { nameEditor = true },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(state.profile.name, style = MaterialTheme.typography.titleLarge)
+                        Icon(
+                            Icons.Outlined.Edit,
+                            contentDescription = "修改昵称",
+                            tint = Sub,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                },
+                supportingContent = { Text("已记录 ${state.rolls.size} 卷 · $shotCount 张", color = Sub) },
+            )
+        }
+        items(mineItems, key = { it.first }) { (label, action) ->
+            val itemShape = RoundedCornerShape(12.dp)
+            ListItem(
+                modifier = Modifier.fillMaxWidth().clip(itemShape)
+                    .border(1.dp, Line, itemShape).clickable(onClick = action),
+                colors = ListItemDefaults.colors(containerColor = Surface),
+                headlineContent = { Text(label) },
+                trailingContent = {
+                    Icon(
+                        Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = Weak,
+                    )
+                },
+            )
         }
     }
 

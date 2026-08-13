@@ -9,21 +9,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -55,64 +54,86 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun FilmCard(roll: Roll, onClick: () -> Unit, archived: Boolean = false) {
-    Row(
+    val shape = RoundedCornerShape(12.dp)
+    ListItem(
         modifier = Modifier
             .fillMaxWidth()
             .height(if (archived) 90.dp else 74.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, Line, RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(brandColor(roll.brandName)),
-        )
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(roll.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${roll.iso} · ${roll.frames}张 · ${roll.type}", style = MaterialTheme.typography.labelMedium, color = Sub)
-            if (archived && roll.archivedDate.isNotBlank()) {
-                Text("完成于 ${roll.archivedDate}", style = MaterialTheme.typography.labelMedium, color = Sub)
+            .clip(shape)
+            .border(1.dp, Line, shape)
+            .clickable(onClick = onClick),
+        colors = ListItemDefaults.colors(containerColor = Surface),
+        headlineContent = {
+            Text(
+                roll.name,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        supportingContent = {
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    "${roll.iso} · ${roll.frames}张 · ${roll.type}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Sub,
+                )
+                if (archived && roll.archivedDate.isNotBlank()) {
+                    Text(
+                        "完成于 ${roll.archivedDate}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Sub,
+                    )
+                }
             }
-        }
-        Text(
-            if (archived) roll.status.label else "${roll.status.label} · ${roll.shot}/${roll.frames}",
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
-            color = statusColor(roll.status),
-        )
-    }
+        },
+        leadingContent = {
+            Box(
+                Modifier.size(46.dp).clip(RoundedCornerShape(10.dp))
+                    .background(brandColor(roll.brandName)),
+            )
+        },
+        trailingContent = {
+            Text(
+                if (archived) roll.status.label else "${roll.status.label} · ${roll.shot}/${roll.frames}",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                color = statusColor(roll.status),
+            )
+        },
+    )
 }
 
 @Composable
 fun ArchiveCard(count: Int, onClick: () -> Unit) {
-    Row(
+    val shape = RoundedCornerShape(12.dp)
+    ListItem(
         modifier = Modifier
             .fillMaxWidth()
             .height(74.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(ArchiveBg)
-            .border(1.dp, ArchiveLine, RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            Modifier.size(46.dp).clip(RoundedCornerShape(10.dp)).background(KodakYellow),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Outlined.Inventory2, contentDescription = null, tint = Ink)
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text("已拍摄完成的胶卷", style = MaterialTheme.typography.titleMedium)
+            .clip(shape)
+            .border(1.dp, ArchiveLine, shape)
+            .clickable(onClick = onClick),
+        colors = ListItemDefaults.colors(containerColor = ArchiveBg),
+        headlineContent = { Text("已拍摄完成的胶卷", style = MaterialTheme.typography.titleMedium) },
+        supportingContent = {
             Text("收纳 $count 卷已标记完成的胶卷", style = MaterialTheme.typography.labelMedium, color = Sub)
-        }
-        Text("›", color = Weak, fontSize = 22.sp)
-    }
+        },
+        leadingContent = {
+            Box(
+                Modifier.size(46.dp).clip(RoundedCornerShape(10.dp)).background(KodakYellow),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Outlined.Inventory2, contentDescription = null, tint = Ink)
+            }
+        },
+        trailingContent = {
+            Icon(
+                Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                contentDescription = null,
+                tint = Weak,
+            )
+        },
+    )
 }
 
 @Composable
