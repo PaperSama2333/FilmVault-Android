@@ -1,8 +1,6 @@
 package com.papersama.filmvault.ui
 
 import android.Manifest
-import android.content.Intent
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
@@ -41,7 +39,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.papersama.filmvault.BuildConfig
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.papersama.filmvault.FilmVaultViewModel
@@ -118,26 +115,8 @@ fun SettingsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    fun openNotificationSettings() {
-        context.startActivity(
-            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-            },
-        )
-    }
-
     ScreenScaffold("设置", back) {
-        Text("权限与提醒", color = Sub, fontWeight = FontWeight.SemiBold)
-        PermissionCard(
-            title = "通知权限",
-            description = "仅用于你主动开启的冲洗提醒，不推送广告。",
-            status = if (notificationAllowed) "已允许" else "未允许",
-            statusColor = if (notificationAllowed) Success else Danger,
-            action = if (notificationAllowed) "系统设置" else "开启",
-        ) {
-            if (notificationAllowed) openNotificationSettings()
-            else notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        Text("提醒", color = Sub, fontWeight = FontWeight.SemiBold)
         val reminderShape = RoundedCornerShape(12.dp)
         ListItem(
             modifier = Modifier.fillMaxWidth().clip(reminderShape).border(1.dp, Line, reminderShape),
@@ -187,13 +166,6 @@ fun SettingsScreen(
                 }
             } else null,
         )
-
-        Text("隐私与系统访问", color = Sub, fontWeight = FontWeight.SemiBold)
-        PrivacyAccessRow("照片", "系统照片选择器", "只读取你明确选择的图片，无需相册权限")
-        PrivacyAccessRow("相机", "系统相机", "拍摄后直接保存到 App 私有目录，无需相机权限")
-        PrivacyAccessRow("文件", "系统文件选择器", "仅在导入或导出备份时访问你选择的位置")
-        PrivacyAccessRow("网络", "未使用", "App 不申请联网权限，数据默认只保存在本机")
-
         Text("数据管理", color = Sub, fontWeight = FontWeight.SemiBold)
         SettingsCard(
             title = "导出数据",
@@ -212,12 +184,6 @@ fun SettingsScreen(
             color = Weak,
             style = MaterialTheme.typography.labelMedium,
         )
-        Text(
-            "胶片匣 ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-            color = Weak,
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.fillMaxWidth(),
-        )
     }
 
     if (confirmRestore) {
@@ -234,42 +200,6 @@ fun SettingsScreen(
             dismissButton = { TextButton(onClick = { confirmRestore = false }) { Text("取消") } },
         )
     }
-}
-
-@Composable
-private fun PermissionCard(
-    title: String,
-    description: String,
-    status: String,
-    statusColor: androidx.compose.ui.graphics.Color,
-    action: String,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(12.dp)
-    ListItem(
-        modifier = Modifier.fillMaxWidth().clip(shape).border(1.dp, Line, shape),
-        colors = ListItemDefaults.colors(containerColor = Surface),
-        headlineContent = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(title, fontWeight = FontWeight.Medium)
-                Text(status, color = statusColor, style = MaterialTheme.typography.labelMedium)
-            }
-        },
-        supportingContent = { Text(description, color = Sub, style = MaterialTheme.typography.labelMedium) },
-        trailingContent = { TextButton(onClick = onClick) { Text(action, color = Ink) } },
-    )
-}
-
-@Composable
-private fun PrivacyAccessRow(title: String, access: String, description: String) {
-    val shape = RoundedCornerShape(12.dp)
-    ListItem(
-        modifier = Modifier.fillMaxWidth().clip(shape).border(1.dp, Line, shape),
-        colors = ListItemDefaults.colors(containerColor = Surface),
-        headlineContent = { Text(title, fontWeight = FontWeight.Medium) },
-        supportingContent = { Text(description, color = Sub, style = MaterialTheme.typography.labelMedium) },
-        trailingContent = { Text(access, color = Success, style = MaterialTheme.typography.labelMedium) },
-    )
 }
 
 @Composable
