@@ -1,4 +1,4 @@
-name: Signed arm64 Release
+name: Signed multi-ABI Release
 
 on:
   push:
@@ -58,7 +58,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android 37.1 and arm64 toolchain
+      - name: Install Android 37.1 and native toolchain
         run: sdkmanager "platforms;android-37.1" "ndk;28.2.13676358" "cmake;3.22.1"
 
       - name: Set up Gradle 9.5
@@ -90,7 +90,7 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/filmvault-release.jks"
           chmod 600 "$RUNNER_TEMP/filmvault-release.jks"
 
-      - name: Test and build signed arm64-v8a APK
+      - name: Test and build signed ABI APKs
         env:
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -110,37 +110,46 @@ jobs:
         id: package
         shell: bash
         run: |
-          APK_PATH="$(find app/build/outputs/apk/release -type f \( -name '*arm64-v8a*.apk' -o -name 'app-release.apk' \) | head -n 1)"
-          if [[ -z "$APK_PATH" ]]; then
-            echo "Release APK not found" >&2
-            find app/build/outputs/apk -type f -maxdepth 5 || true
-            exit 1
-          fi
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
-          "$APKSIGNER" verify --verbose --print-certs "$APK_PATH"
-          unzip -l "$APK_PATH" | grep -q 'lib/arm64-v8a/libfilmvault.so'
-          if unzip -l "$APK_PATH" | grep -Eq 'lib/(armeabi-v7a|x86|x86_64)/'; then
-            echo "Unexpected non-arm64 native ABI found" >&2
-            exit 1
-          fi
-          RELEASE_NAME="FilmVault-${RELEASE_TAG#v}-arm64-v8a.apk"
-          cp "$APK_PATH" "$RUNNER_TEMP/$RELEASE_NAME"
-          sha256sum "$RUNNER_TEMP/$RELEASE_NAME" > "$RUNNER_TEMP/$RELEASE_NAME.sha256"
-          echo "apk=$RUNNER_TEMP/$RELEASE_NAME" >> "$GITHUB_OUTPUT"
-          echo "checksum=$RUNNER_TEMP/$RELEASE_NAME.sha256" >> "$GITHUB_OUTPUT"
+          for ABI in arm64-v8a x86_64; do
+            APK_PATH="$(find app/build/outputs/apk/release -type f -name "*$ABI*.apk" | head -n 1)"
+            if [[ -z "$APK_PATH" ]]; then
+              echo "Release APK not found for $ABI" >&2
+              find app/build/outputs/apk -maxdepth 5 -type f || true
+              exit 1
+            fi
+
+            "$APKSIGNER" verify --verbose --print-certs "$APK_PATH"
+            unzip -l "$APK_PATH" | grep -q "lib/$ABI/libfilmvault.so"
+            if unzip -l "$APK_PATH" | grep -E 'lib/(arm64-v8a|armeabi-v7a|x86|x86_64)/' | grep -v "lib/$ABI/"; then
+              echo "Unexpected native ABI found in $ABI APK" >&2
+              exit 1
+            fi
+
+            RELEASE_NAME="FilmVault-${RELEASE_TAG#v}-$ABI.apk"
+            cp "$APK_PATH" "$RUNNER_TEMP/$RELEASE_NAME"
+            (cd "$RUNNER_TEMP" && sha256sum "$RELEASE_NAME" > "$RELEASE_NAME.sha256")
+            OUTPUT_KEY="${ABI//-/_}"
+            echo "apk_$OUTPUT_KEY=$RUNNER_TEMP/$RELEASE_NAME" >> "$GITHUB_OUTPUT"
+            echo "checksum_$OUTPUT_KEY=$RUNNER_TEMP/$RELEASE_NAME.sha256" >> "$GITHUB_OUTPUT"
+          done
 
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          APK: ${{ steps.package.outputs.apk }}
-          CHECKSUM: ${{ steps.package.outputs.checksum }}
+          ARM_APK: ${{ steps.package.outputs.apk_arm64_v8a }}
+          ARM_CHECKSUM: ${{ steps.package.outputs.checksum_arm64_v8a }}
+          X86_APK: ${{ steps.package.outputs.apk_x86_64 }}
+          X86_CHECKSUM: ${{ steps.package.outputs.checksum_x86_64 }}
         shell: bash
         run: |
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" "$APK" "$CHECKSUM" --clobber
+            gh release upload "$RELEASE_TAG" \
+              "$ARM_APK" "$ARM_CHECKSUM" "$X86_APK" "$X86_CHECKSUM" --clobber
             gh release edit "$RELEASE_TAG" --title "FilmVault $RELEASE_TAG"
           else
-            gh release create "$RELEASE_TAG" "$APK" "$CHECKSUM" \
+            gh release create "$RELEASE_TAG" \
+              "$ARM_APK" "$ARM_CHECKSUM" "$X86_APK" "$X86_CHECKSUM" \
               --verify-tag \
               --generate-notes \
               --title "FilmVault $RELEASE_TAG"

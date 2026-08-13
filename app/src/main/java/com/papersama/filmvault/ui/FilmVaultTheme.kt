@@ -25,6 +25,7 @@ val ArchiveLine = Color(0xFFF5DB66)
 val TagBg = Color(0xFFF6F6F4)
 val TagInk = Color(0xFF6B6B70)
 val Danger = Color(0xFFE5484D)
+val Success = Color(0xFF2E7D32)
 
 private val FilmVaultColors = lightColorScheme(
     primary = KodakYellow,

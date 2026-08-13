@@ -10,6 +10,7 @@ import com.papersama.filmvault.data.LabRecord
 import com.papersama.filmvault.data.NewRollInput
 import com.papersama.filmvault.data.ShotInput
 import com.papersama.filmvault.data.TagCategory
+import com.papersama.filmvault.reminder.FilmReminder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,15 +48,29 @@ class FilmVaultViewModel(application: Application) : AndroidViewModel(applicatio
         database.deleteShot(rollId, shotId)
     }
 
-    fun updateLab(rollId: String, lab: LabRecord) = mutate {
-        database.updateLab(rollId, lab)
+    fun updateLab(rollId: String, lab: LabRecord) = mutate(
+        onDone = { _: Unit ->
+            if (lab.status != com.papersama.filmvault.data.LabStatus.NONE) {
+                FilmReminder.cancel(getApplication(), rollId)
+            }
+        },
+    ) { database.updateLab(rollId, lab) }
+
+    fun markDone(id: String, date: String) {
+        val rollName = _state.value.rolls.firstOrNull { it.id == id }?.name.orEmpty()
+        mutate(
+            onDone = { _: Unit -> FilmReminder.schedule(getApplication(), id, rollName) },
+        ) { database.markDone(id, date) }
     }
 
-    fun markDone(id: String, date: String) = mutate { database.markDone(id, date) }
+    fun unarchive(id: String) = mutate(
+        onDone = { _: Unit -> FilmReminder.cancel(getApplication(), id) },
+    ) { database.unarchive(id) }
 
-    fun unarchive(id: String) = mutate { database.unarchive(id) }
-
-    fun deleteRoll(id: String, onDone: () -> Unit = {}) = mutate(onDone) {
+    fun deleteRoll(id: String, onDone: () -> Unit = {}) = mutate(onDone = { _: Unit ->
+        FilmReminder.cancel(getApplication(), id)
+        onDone()
+    }) {
         database.deleteRoll(id)
     }
 

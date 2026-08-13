@@ -121,12 +121,25 @@ fun MainTabs(
 @Composable
 private fun HomeTab(state: AppUiState, open: (Route) -> Unit) {
     var filter by remember { mutableStateOf<RollStatus?>(null) }
-    val visible = state.rolls.filter { !it.archived && (filter == null || it.status == filter) }
+    var query by remember { mutableStateOf("") }
+    val normalizedQuery = query.trim().lowercase()
+    val visible = state.rolls.filter { roll ->
+        !roll.archived &&
+            (filter == null || roll.status == filter) &&
+            (normalizedQuery.isBlank() || listOf(
+                roll.name,
+                roll.brandName,
+                roll.type,
+                roll.iso,
+                roll.tags.joinToString(" "),
+            ).any { normalizedQuery in it.lowercase() })
+    }
     val filters = listOf(
         null to "全部",
         RollStatus.UNSHOT to "未拍",
         RollStatus.SHOOT to "拍摄中",
         RollStatus.WASH to "待冲洗",
+        RollStatus.SENT to "已送洗",
         RollStatus.DONE to "已完成",
     )
     LazyColumn(
@@ -156,6 +169,13 @@ private fun HomeTab(state: AppUiState, open: (Route) -> Unit) {
                     Text("+", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Ink)
                 }
             }
+        }
+        item {
+            FilmTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = "搜索名称、品牌、类型或标签",
+            )
         }
         item {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

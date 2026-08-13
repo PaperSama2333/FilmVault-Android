@@ -1,5 +1,7 @@
 package com.papersama.filmvault.ui
 
+import android.content.Context
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,21 +18,26 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +48,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
+import com.papersama.filmvault.BuildConfig
 import com.papersama.filmvault.FilmVaultViewModel
 import com.papersama.filmvault.data.AppUiState
 import com.papersama.filmvault.data.NewRollInput
@@ -48,6 +57,7 @@ import com.papersama.filmvault.data.ShotInput
 import com.papersama.filmvault.data.TagCategory
 import com.papersama.filmvault.data.splitTags
 import com.papersama.filmvault.data.today
+import java.io.File
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -132,8 +142,19 @@ fun AddShotScreen(
     var count by remember(existing) { mutableStateOf((existing?.count ?: 6).toString()) }
     var note by remember(existing) { mutableStateOf(existing?.note.orEmpty()) }
     var samples by remember(existing) { mutableStateOf(existing?.samples.orEmpty()) }
+    var pendingCameraPath by remember { mutableStateOf<String?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val hasCamera = remember {
+        context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
+    }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(12)) { uris ->
         if (uris.isNotEmpty()) viewModel.importSamples(uris) { samples = samples + it }
+    }
+    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+        pendingCameraPath?.let { path ->
+            if (saved) samples = samples + path else runCatching { File(path).delete() }
+        }
+        pendingCameraPath = null
     }
     val editing = existing != null
 
@@ -187,13 +208,29 @@ fun AddShotScreen(
                         }
                     }
                 }
-                IconButton(
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (hasCamera) OutlinedButton(
+                    onClick = {
+                        val target = createCameraTarget(context)
+                        pendingCameraPath = target.first.absolutePath
+                        camera.launch(target.second)
+                    },
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Icon(Icons.Outlined.CameraAlt, contentDescription = null)
+                    Text("拍摄样张", modifier = Modifier.padding(start = 8.dp))
+                }
+                OutlinedButton(
                     onClick = {
                         picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     },
-                    modifier = Modifier.size(72.dp),
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
                 ) {
-                    Icon(Icons.Outlined.Add, contentDescription = "添加样张", tint = Weak)
+                    Icon(Icons.Outlined.PhotoLibrary, contentDescription = null)
+                    Text("选择照片", modifier = Modifier.padding(start = 8.dp))
                 }
             }
         }
@@ -201,6 +238,21 @@ fun AddShotScreen(
     }
 }
 
+private fun createCameraTarget(context: Context): Pair<File, android.net.Uri> {
+    val directory = File(context.filesDir, "media").apply { mkdirs() }
+    val file = File(
+        directory,
+        "camera-${System.currentTimeMillis()}-${(1000..9999).random()}.jpg",
+    ).apply { createNewFile() }
+    val uri = FileProvider.getUriForFile(
+        context,
+        "${BuildConfig.APPLICATION_ID}.fileprovider",
+        file,
+    )
+    return file to uri
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScreenScaffold(
     title: String,
@@ -209,27 +261,29 @@ fun ScreenScaffold(
     onAction: () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = back, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Outlined.ArrowBack, contentDescription = "返回")
-            }
-            Text(
-                title,
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.weight(1f),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+    Scaffold(
+        containerColor = Surface,
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(title, style = MaterialTheme.typography.headlineSmall) },
+                navigationIcon = {
+                    IconButton(onClick = back) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    if (action == null) Box(Modifier.size(48.dp))
+                    else TextButton(onClick = onAction) {
+                        Text(action, color = Ink, fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Surface),
             )
-            if (action == null) Box(Modifier.size(40.dp))
-            else TextButton(onClick = onAction, modifier = Modifier.height(40.dp)) {
-                Text(action, color = KodakYellow, fontWeight = FontWeight.SemiBold)
-            }
-        }
+        },
+    ) { padding ->
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
             content = content,
         )

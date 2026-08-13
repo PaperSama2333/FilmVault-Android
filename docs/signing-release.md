@@ -1,6 +1,6 @@
 # Android 签名与 Tag Release 配置
 
-工作流 `.github/workflows/release.yml` 只在推送 `v*.*.*` Tag 时运行，并在发布前依次执行单元测试、Release Lint、R8 压缩、APK 签名校验和 ABI 校验。只有包含 `lib/arm64-v8a/libfilmvault.so` 且不含其他 ABI 的 APK 才会发布。
+工作流 `.github/workflows/release.yml` 在推送 `v*.*.*` Tag 时运行，并在发布前依次执行单元测试、Release Lint、R8 压缩、APK 签名校验和 ABI 校验。它分别生成 `arm64-v8a` 与 `x86_64` APK，每个 APK 只允许包含自己的 ABI。
 
 ## 1. 在本机生成发布密钥
 
@@ -61,10 +61,12 @@ git tag -a v1.0.0 -m "FilmVault Android v1.0.0"
 git push origin v1.0.0
 ```
 
-在仓库的 `Actions → Signed arm64 Release` 查看进度。成功后 GitHub Releases 会出现：
+在仓库的 `Actions → Signed multi-ABI Release` 查看进度。成功后 GitHub Releases 会出现：
 
 - `FilmVault-1.0.0-arm64-v8a.apk`
 - `FilmVault-1.0.0-arm64-v8a.apk.sha256`
+- `FilmVault-1.0.0-x86_64.apk`
+- `FilmVault-1.0.0-x86_64.apk.sha256`
 
 ## 5. 后续版本
 

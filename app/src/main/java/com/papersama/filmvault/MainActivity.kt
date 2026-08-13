@@ -4,6 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,6 +32,7 @@ import com.papersama.filmvault.ui.MainTabs
 import com.papersama.filmvault.ui.NewRollScreen
 import com.papersama.filmvault.ui.RollDetailScreen
 import com.papersama.filmvault.ui.SettingsScreen
+import com.papersama.filmvault.ui.Surface
 import com.papersama.filmvault.ui.TagsManageScreen
 
 class MainActivity : ComponentActivity() {
@@ -50,11 +56,34 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                Box(Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxSize().background(Surface)) {
                     NavDisplay(
+                        modifier = Modifier.fillMaxSize().background(Surface),
                         backStack = backStack,
                         onBack = {
                             if (backStack.size > 1) backStack.removeLastOrNull() else finish()
+                        },
+                        transitionSpec = {
+                            slideInHorizontally(
+                                initialOffsetX = { it },
+                                animationSpec = tween(280),
+                            ) togetherWith slideOutHorizontally(
+                                targetOffsetX = { -it },
+                                animationSpec = tween(280),
+                            )
+                        },
+                        popTransitionSpec = {
+                            slideInHorizontally(
+                                initialOffsetX = { -it },
+                                animationSpec = tween(260),
+                            ) togetherWith slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(260),
+                            )
+                        },
+                        predictivePopTransitionSpec = {
+                            slideInHorizontally(initialOffsetX = { -it }) togetherWith
+                                slideOutHorizontally(targetOffsetX = { it })
                         },
                         entryProvider = entryProvider {
                             entry<Route.Main> {
