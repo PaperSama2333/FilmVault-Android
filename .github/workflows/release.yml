@@ -116,7 +116,12 @@ jobs:
           CHECKSUM: ${{ steps.package.outputs.checksum }}
         shell: bash
         run: |
-          gh release create "$GITHUB_REF_NAME" "$APK" "$CHECKSUM" \
-            --verify-tag \
-            --generate-notes \
-            --title "FilmVault ${GITHUB_REF_NAME}"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$APK" "$CHECKSUM" --clobber
+            gh release edit "$GITHUB_REF_NAME" --title "FilmVault ${GITHUB_REF_NAME}"
+          else
+            gh release create "$GITHUB_REF_NAME" "$APK" "$CHECKSUM" \
+              --verify-tag \
+              --generate-notes \
+              --title "FilmVault ${GITHUB_REF_NAME}"
+          fi
