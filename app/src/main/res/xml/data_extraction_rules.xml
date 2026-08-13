@@ -3,7 +3,6 @@
     <cloud-backup>
         <include domain="database" path="filmvault.db" />
         <include domain="file" path="media/" />
-        <exclude domain="file" path="avatar/" />
     </cloud-backup>
     <device-transfer>
         <include domain="database" path="filmvault.db" />
