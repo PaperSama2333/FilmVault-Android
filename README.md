@@ -1,6 +1,6 @@
 # 胶片匣 FilmVault · Android 原生版
 
-根据 `PaperSama2333/FilmVault-APP` 的功能语义与 UI 重新实现的 Kotlin 原生 Android App。项目保留柯达黄、白底、卡片、筛选胶囊与四栏底部导航，同时采用 Android 13+ 的系统交互。
+根据 `FilmVault-APP` 的功能语义与 UI 重新实现的 Kotlin 原生 Android App。采用 Android 13+ 的系统交互。
 
 ## 已实现
 
